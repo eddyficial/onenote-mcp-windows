@@ -61,6 +61,13 @@ bun run check
 bun test
 ```
 
+## Other implementations
+
+Same 27 tools, same schemas — pick your runtime:
+
+- [onenote-mcp-dotnet](https://github.com/eddyficial/onenote-mcp-dotnet) — C#/.NET, direct COM (no bridge), ships a self-contained exe (easiest install)
+- [onenote-mcp-python](https://github.com/eddyficial/onenote-mcp-python) — Python + uv, same PowerShell bridge
+
 ## License
 
 MIT
