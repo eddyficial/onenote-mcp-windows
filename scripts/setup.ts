@@ -49,7 +49,8 @@ if (wants("claude-desktop")) {
   write(path, mergeClaude(existsSync(path) ? readFileSync(path, "utf8") : ""));
 }
 if (wants("claude-code")) {
-  const claude = process.env.APPDATA ? join(process.env.APPDATA, "npm", "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe") : "claude";
+  const claude = Bun.which("claude");
+  if (!claude) throw new Error("Claude Code CLI ('claude') not found on PATH.");
   const existing = Bun.spawnSync([claude, "mcp", "get", "onenote"], { stdout: "pipe", stderr: "pipe" });
   const output = `${existing.stdout.toString()}\n${existing.stderr.toString()}`;
   const same = existing.exitCode === 0 && output.replaceAll("\\", "/").toLowerCase().includes(server.replaceAll("\\", "/").toLowerCase());
