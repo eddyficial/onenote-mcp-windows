@@ -37,6 +37,15 @@ organization, rich content, export, safe deletion, knowledge digests, action
 and decision extraction, duplicate and stale-page health checks, weekly review
 source packs, and preview-first templates.
 
+## Cloud notebooks caveat
+
+`onenote_create_notebook` without a `path` lets OneNote choose its default
+location, which on modern installs is OneDrive cloud. A just-created cloud
+notebook can reject immediate writes with COM error `0x80042030` until it
+syncs. For reliable scripted workflows, pass an absolute local `path` (e.g.
+`C:\Users\you\Documents\Notebooks`) — local notebooks accept section and page
+writes instantly.
+
 ## Safety
 
 - Template creation previews by default.
