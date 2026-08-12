@@ -1,6 +1,6 @@
 {
   "name": "onenote-mcp-windows",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Standalone MCP server for Microsoft OneNote desktop on Windows",

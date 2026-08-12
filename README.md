@@ -81,6 +81,15 @@ bun run check
 bun test
 ```
 
+## Versioning
+
+Releases follow [semantic versioning](https://semver.org): a patch bump
+(v0.1.2) means fixes, a minor bump (v0.2.0) adds tools or features, and a
+major bump (v1.0.0) signals a breaking change to tool names or input schemas.
+The three sibling implementations share one version number — a given vX.Y.Z
+tag exposes the same tool surface in every runtime. This repo tags source-only
+releases; the .NET sibling's releases ship a self-contained exe.
+
 ## Other implementations
 
 Same 27 tools, same schemas — pick your runtime:

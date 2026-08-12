@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   const byName = new Map<string, McpTool>(tools.map((t) => [t.definition.name, t]));
 
   const server = new Server(
-    { name: "onenote-mcp-windows", version: "0.1.0" },
+    { name: "onenote-mcp-windows", version: "0.1.2" },
     { capabilities: { tools: {} } },
   );
 
