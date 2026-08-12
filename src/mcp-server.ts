@@ -45,6 +45,12 @@ async function main(): Promise<void> {
       name: t.definition.name,
       description: t.definition.description,
       inputSchema: t.definition.input_schema as Record<string, unknown>,
+      annotations: {
+        readOnlyHint: t.readOnly,
+        destructiveHint: !t.readOnly && (t.destructive ?? false),
+        // Everything talks to the local OneNote instance only.
+        openWorldHint: false,
+      },
     })),
   }));
 

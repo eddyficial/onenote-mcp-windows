@@ -376,6 +376,26 @@ function Get-SectionPageIds([string]$sectionId) {
   return $ids
 }
 
+# Object IDs are model-supplied (and can originate from untrusted note
+# content), so any ID interpolated into hand-built XML must be escaped or a
+# crafted "ID" breaks out of the attribute and injects hierarchy XML.
+function Get-XmlAttrEscaped([string]$value) {
+  return [System.Security.SecurityElement]::Escape($value)
+}
+
+# Magic-byte check for the image formats OneNote's Image element accepts.
+function Test-SupportedImageHeader([byte[]]$bytes) {
+  if ($bytes.Length -lt 8) { return $false }
+  if ($bytes[0] -eq 0x89 -and $bytes[1] -eq 0x50 -and $bytes[2] -eq 0x4E -and $bytes[3] -eq 0x47 -and
+      $bytes[4] -eq 0x0D -and $bytes[5] -eq 0x0A -and $bytes[6] -eq 0x1A -and $bytes[7] -eq 0x0A) { return $true } # PNG
+  if ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8 -and $bytes[2] -eq 0xFF) { return $true }                         # JPEG
+  if ($bytes[0] -eq 0x47 -and $bytes[1] -eq 0x49 -and $bytes[2] -eq 0x46 -and $bytes[3] -eq 0x38) { return $true } # GIF87a/89a
+  if ($bytes[0] -eq 0x42 -and $bytes[1] -eq 0x4D) { return $true }                                                 # BMP
+  if ($bytes[0] -eq 0x49 -and $bytes[1] -eq 0x49 -and $bytes[2] -eq 0x2A -and $bytes[3] -eq 0x00) { return $true } # TIFF LE
+  if ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x4D -and $bytes[2] -eq 0x00 -and $bytes[3] -eq 0x2A) { return $true } # TIFF BE
+  return $false
+}
+
 function Op-Move_Page($opArgs) {
   if (-not $opArgs.page_id) { throw "page_id is required" }
   if (-not $opArgs.target_section_id) { throw "target_section_id is required" }
@@ -384,8 +404,8 @@ function Op-Move_Page($opArgs) {
   # before and after so we can hand back the new ID as the set difference.
   $before = Get-SectionPageIds $opArgs.target_section_id
   $xml =
-    "<one:Section xmlns:one=`"$($script:OneNS)`" ID=`"$($opArgs.target_section_id)`">" +
-    "<one:Page ID=`"$($opArgs.page_id)`" /></one:Section>"
+    "<one:Section xmlns:one=`"$($script:OneNS)`" ID=`"$(Get-XmlAttrEscaped $opArgs.target_section_id)`">" +
+    "<one:Page ID=`"$(Get-XmlAttrEscaped $opArgs.page_id)`" /></one:Section>"
   $script:App.UpdateHierarchy($xml)
   $after = Get-SectionPageIds $opArgs.target_section_id
   $newId = $null
@@ -404,10 +424,10 @@ function Op-Move_Section($opArgs) {
   # The target parent is a notebook or a section group; reparent by submitting
   # it with the section as a child. Try SectionGroup wrapper first, then
   # Notebook, so either parent kind works.
-  $secXml = "<one:Section ID=`"$($opArgs.section_id)`" />"
+  $secXml = "<one:Section ID=`"$(Get-XmlAttrEscaped $opArgs.section_id)`" />"
   $attempts = @(
-    "<one:SectionGroup xmlns:one=`"$($script:OneNS)`" ID=`"$($opArgs.target_parent_id)`">$secXml</one:SectionGroup>",
-    "<one:Notebook xmlns:one=`"$($script:OneNS)`" ID=`"$($opArgs.target_parent_id)`">$secXml</one:Notebook>"
+    "<one:SectionGroup xmlns:one=`"$($script:OneNS)`" ID=`"$(Get-XmlAttrEscaped $opArgs.target_parent_id)`">$secXml</one:SectionGroup>",
+    "<one:Notebook xmlns:one=`"$($script:OneNS)`" ID=`"$(Get-XmlAttrEscaped $opArgs.target_parent_id)`">$secXml</one:Notebook>"
   )
   $lastErr = $null
   foreach ($xml in $attempts) {
@@ -717,8 +737,16 @@ function Op-Insert_Rich_Content($opArgs) {
     }
   }
   if ($opArgs.image_path) {
-    if (-not (Test-Path $opArgs.image_path)) { throw "image_path not found: $($opArgs.image_path)" }
+    if (-not (Test-Path -LiteralPath $opArgs.image_path)) { throw "image_path not found: $($opArgs.image_path)" }
+    # Embedded images end up in notebooks that sync to OneDrive and may be
+    # shared, so image_path must actually be an image — otherwise this op is an
+    # arbitrary-file-read that copies local files off the machine.
+    $imgInfo = Get-Item -LiteralPath $opArgs.image_path
+    if ($imgInfo.Length -gt 26214400) { throw "image_path exceeds the 25 MB embed limit: $($opArgs.image_path)" }
     $bytes = [System.IO.File]::ReadAllBytes($opArgs.image_path)
+    if (-not (Test-SupportedImageHeader $bytes)) {
+      throw "image_path is not a supported image (png, jpeg, gif, bmp, or tiff): $($opArgs.image_path)"
+    }
     $b64 = [System.Convert]::ToBase64String($bytes)
     $oe = $doc.CreateElement("one", "OE", $script:OneNS)
     $img = $doc.CreateElement("one", "Image", $script:OneNS)

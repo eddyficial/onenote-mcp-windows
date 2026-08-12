@@ -200,6 +200,7 @@ function navigateTool(bridge: OneNoteBridge): McpTool {
 function deletePageTool(bridge: OneNoteBridge): McpTool {
   return {
     readOnly: false,
+    destructive: true,
     definition: {
       name: "onenote_delete_page",
       description:
@@ -326,6 +327,7 @@ function createNotebookTool(bridge: OneNoteBridge): McpTool {
 function renameSectionTool(bridge: OneNoteBridge): McpTool {
   return {
     readOnly: false,
+    destructive: true,
     definition: {
       name: "onenote_rename_section",
       description: "Rename an existing section.",
@@ -352,6 +354,7 @@ function renameSectionTool(bridge: OneNoteBridge): McpTool {
 function renamePageTool(bridge: OneNoteBridge): McpTool {
   return {
     readOnly: false,
+    destructive: true,
     definition: {
       name: "onenote_rename_page",
       description: "Rename an existing page (sets its title).",
@@ -504,6 +507,7 @@ function reorderSectionsTool(bridge: OneNoteBridge): McpTool {
 function updatePageTool(bridge: OneNoteBridge): McpTool {
   return {
     readOnly: false,
+    destructive: true,
     definition: {
       name: "onenote_update_page",
       description:
@@ -612,6 +616,7 @@ function exportTool(bridge: OneNoteBridge): McpTool {
 function deleteSectionTool(bridge: OneNoteBridge): McpTool {
   return {
     readOnly: false,
+    destructive: true,
     definition: {
       name: "onenote_delete_section",
       description:
@@ -641,6 +646,7 @@ function deleteSectionTool(bridge: OneNoteBridge): McpTool {
 function deleteNotebookTool(bridge: OneNoteBridge): McpTool {
   return {
     readOnly: false,
+    destructive: true,
     definition: {
       name: "onenote_delete_notebook",
       description:
