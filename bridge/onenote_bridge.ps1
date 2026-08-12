@@ -310,15 +310,30 @@ function Op-Create_Section_Group($opArgs) {
   return [ordered]@{ section_group_id = $id; name = $opArgs.name }
 }
 
+# Join-Path/Path.Combine silently discard the folder when the name is rooted,
+# so an unvalidated name (or one with separators / "..") lets a notebook be
+# created at an arbitrary filesystem location instead of inside the chosen
+# folder.
+function Assert-NotebookLocation([string]$name, [string]$path) {
+  $invalid = [System.IO.Path]::GetInvalidFileNameChars()
+  if (-not $name -or $name -eq "." -or $name -eq ".." -or $name.IndexOfAny($invalid) -ge 0) {
+    throw "name must be a plain folder name (no path separators): $name"
+  }
+  if ($path -and -not [System.IO.Path]::IsPathRooted($path)) {
+    throw "path must be an absolute folder: $path"
+  }
+}
+
 function Op-Create_Notebook($opArgs) {
   if (-not $opArgs.name) { throw "name is required" }
+  Assert-NotebookLocation "$($opArgs.name)" "$($opArgs.path)"
   $folder = "$($opArgs.path)"
   if (-not $folder) {
     $loc = ""
     $script:App.GetSpecialLocation($script:SlDefaultNotebookFolder, [ref]$loc)
     $folder = $loc
   }
-  $full = Join-Path $folder $opArgs.name
+  $full = [System.IO.Path]::GetFullPath((Join-Path $folder $opArgs.name))
   $id = ""
   $script:App.OpenHierarchy($full, "", [ref]$id, $script:CftNotebook)
   return [ordered]@{ notebook_id = $id; name = $opArgs.name; path = $full }
@@ -765,6 +780,34 @@ function Op-Insert_Rich_Content($opArgs) {
 
 $script:PubFormat = @{ onenote = 0; package = 1; mhtml = 2; pdf = 3; xps = 4; word = 5; docx = 5; emf = 6; html = 7 }
 
+$script:ExportExtensions = @{
+  onenote = @(".one"); package = @(".onepkg"); mhtml = @(".mht", ".mhtml"); pdf = @(".pdf")
+  xps = @(".xps"); word = @(".doc", ".docx"); docx = @(".docx"); emf = @(".emf"); html = @(".html", ".htm")
+}
+
+# Exported content includes note text, which can carry injected instructions
+# from shared/clipped sources — so an unconstrained path-and-extension write
+# primitive could drop a script into an autorun location. Pinning the
+# extension to the declared format keeps the written file inert, and requiring
+# an existing absolute directory stops implicit directory creation and
+# relative-path surprises.
+function Get-ValidatedExportTarget([string]$targetPath, [string]$fmtName) {
+  if (-not [System.IO.Path]::IsPathRooted($targetPath)) {
+    throw "target_path must be an absolute file path: $targetPath"
+  }
+  $full = [System.IO.Path]::GetFullPath($targetPath)
+  $dir = [System.IO.Path]::GetDirectoryName($full)
+  if (-not $dir -or -not (Test-Path -LiteralPath $dir -PathType Container)) {
+    throw "target_path directory does not exist: $dir"
+  }
+  $ext = [System.IO.Path]::GetExtension($full).ToLower()
+  $allowed = $script:ExportExtensions[$fmtName]
+  if ($allowed -and ($allowed -notcontains $ext)) {
+    throw "target_path extension '$ext' does not match format '$fmtName' (expected $($allowed -join ' or '))"
+  }
+  return $full
+}
+
 function Op-Export($opArgs) {
   if (-not $opArgs.object_id) { throw "object_id is required" }
   if (-not $opArgs.target_path) { throw "target_path is required" }
@@ -772,8 +815,9 @@ function Op-Export($opArgs) {
   if ($opArgs.format) { $fmtName = "$($opArgs.format)".ToLower() }
   $fmt = $script:PubFormat[$fmtName]
   if ($null -eq $fmt) { throw "unknown export format: $fmtName (pdf|html|docx|mhtml|xps|onenote)" }
-  $script:App.Publish($opArgs.object_id, $opArgs.target_path, $fmt, "")
-  return [ordered]@{ object_id = $opArgs.object_id; path = $opArgs.target_path; format = $fmtName }
+  $full = Get-ValidatedExportTarget "$($opArgs.target_path)" $fmtName
+  $script:App.Publish($opArgs.object_id, $full, $fmt, "")
+  return [ordered]@{ object_id = $opArgs.object_id; path = $full; format = $fmtName }
 }
 
 while ($null -ne ($line = $script:StdIn.ReadLine())) {
