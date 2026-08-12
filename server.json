@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.eddyficial/onenote-mcp-windows",
+  "description": "MCP server for OneNote desktop on Windows via PowerShell COM bridge (TypeScript). 27 tools.",
+  "title": "OneNote MCP (TypeScript)",
+  "websiteUrl": "https://github.com/eddyficial/onenote-mcp-windows#install-and-connect",
+  "repository": {
+    "url": "https://github.com/eddyficial/onenote-mcp-windows",
+    "source": "github"
+  },
+  "version": "0.1.2"
+}
